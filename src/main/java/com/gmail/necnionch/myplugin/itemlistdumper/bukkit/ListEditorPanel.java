@@ -40,7 +40,7 @@ public class ListEditorPanel extends Panel {
     }
 
     public Setting setting() {
-        return new Setting(Lists.newArrayList(listedTypes), pageIndex, showBlocks, showItems, showSelected, searchQuery);
+        return new Setting(Lists.newArrayList(getListedTypes()), pageIndex, showBlocks, showItems, showSelected, searchQuery);
     }
 
     public ListEditorPanel addAll(Collection<Material> types) {
@@ -217,7 +217,7 @@ public class ListEditorPanel extends Panel {
     }
 
     private void saveSetting() {
-        JavaPlugin.getPlugin(ItemListDumpPlugin.class).getListSelector(getPlayer()).setListSetting(setting());
+        JavaPlugin.getPlugin(ItemListDumpPlugin.class).makeListSelector(getPlayer()).setListSetting(setting());
     }
 
     public static final class Setting {
@@ -241,7 +241,7 @@ public class ListEditorPanel extends Panel {
             this.searchQuery = searchQuery;
         }
 
-        public List<Material> getTypes() {
+        public List<Material> types() {
             return types;
         }
 
@@ -265,7 +265,7 @@ public class ListEditorPanel extends Panel {
             return searchQuery;
         }
 
-        public void setTypes(List<Material> types) {
+        public void types(List<Material> types) {
             this.types = types;
         }
 

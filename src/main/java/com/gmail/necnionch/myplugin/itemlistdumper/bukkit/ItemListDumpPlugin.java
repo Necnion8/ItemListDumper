@@ -5,9 +5,12 @@ import com.google.common.collect.Maps;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.block.Block;
+import org.bukkit.block.Container;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -17,17 +20,20 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerEditBookEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataHolder;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 public final class ItemListDumpPlugin extends JavaPlugin implements Listener {
     public static final String PERMISSION = "itemlistdump.command.dumpitemlist";
@@ -51,7 +57,8 @@ public final class ItemListDumpPlugin extends JavaPlugin implements Listener {
         SimpleCommand command = new SimpleCommand();
         command.subcommands().put("givebook", this::onGiveBookCommand);
         command.subcommands().put("clear", this::onClearCommand);
-        command.subcommands().put("importchest", this::onImportChestCommand);
+        command.subcommands().put("importchestset", this::onImportChestSetCommand);
+        command.subcommands().put("importchestunset", this::onImportChestUnsetCommand);
         command.subcommands().put("dump", this::onDumpCommand);
         return command;
     }
@@ -83,22 +90,114 @@ public final class ItemListDumpPlugin extends JavaPlugin implements Listener {
     }
 
     private boolean onClearCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!(sender instanceof Player))
+            return true;
+        Player player = (Player) sender;
+        ListSelector selector = getListSelector(player);
+        if (selector == null) {
+            player.sendMessage(ChatColor.RED + "リストがありません");
+        } else if (selector.getListedCount() <= 0) {
+            player.sendMessage(ChatColor.RED + "1つも選択されていません");
+        } else {
+            selector.clearList();
+            player.sendMessage(ChatColor.GOLD + "リストを空にしました");
+        }
+        return true;
+
+    }
+
+    private boolean onImportChestSetCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!(sender instanceof Player))
+            return true;
+
+        Player player = (Player) sender;
+        Block targetBlock = player.getTargetBlockExact(4);
+
+        if (targetBlock == null ||  !(targetBlock.getState() instanceof Container)) {
+            player.sendMessage(ChatColor.RED + "チェストに視点を合わせてから実行してください");
+            return true;
+        }
+
+        ListSelector selector = makeListSelector(player);
+        Container container = (Container) targetBlock.getState();
+
+        //noinspection ConstantConditions
+        long added = Stream.of(container.getInventory().getContents())
+                .filter(Objects::nonNull)
+                .map(ItemStack::getType)
+                .distinct()
+                .filter(type -> !Material.AIR.equals(type))
+                .filter(typ -> {
+                    try {
+                        if (!selector.getListSetting().types().contains(typ)) {
+                            selector.getListSetting().types().add(typ);
+                            return true;
+                        }
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                    return false;
+                })
+                .count();
+
+        player.sendMessage(ChatColor.GOLD + "アイテムタイプ " + added + "個 がリストに追加されました。");
         return true;
     }
 
-    private boolean onImportChestCommand(CommandSender sender, Command command, String label, String[] args) {
+    private boolean onImportChestUnsetCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!(sender instanceof Player))
+            return true;
+
+        Player player = (Player) sender;
+        Block targetBlock = player.getTargetBlockExact(4);
+
+        if (targetBlock == null ||  !(targetBlock.getState() instanceof Container)) {
+            player.sendMessage(ChatColor.RED + "チェストに視点を合わせてから実行してください");
+            return true;
+        }
+
+        ListSelector selector = makeListSelector(player);
+        Container container = (Container) targetBlock.getState();
+
+        //noinspection ConstantConditions
+        long removed = Stream.of(container.getInventory().getContents())
+                .filter(Objects::nonNull)
+                .map(ItemStack::getType)
+                .distinct()
+                .filter(type -> !Material.AIR.equals(type))
+                .filter(typ -> selector.getListSetting().types().remove(typ))
+                .count();
+
+        player.sendMessage(ChatColor.GOLD + "アイテムタイプ " + removed + "個 がリストから削除されました。");
         return true;
     }
 
     private boolean onDumpCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!(sender instanceof Player))
+            return true;
+        Player player = (Player) sender;
+        ListSelector selector = getListSelector(player);
+        if (selector == null) {
+            player.sendMessage(ChatColor.RED + "リストがありません");
+        } else if (selector.getListedCount() <= 0) {
+            player.sendMessage(ChatColor.RED + "1つも選択されていません");
+        } else {
+            player.sendMessage(ChatColor.WHITE + "リストを書き出しました");
+            selector.printList(player);
+        }
         return true;
     }
 
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
+        if (!EquipmentSlot.HAND.equals(event.getHand())) {
+            return;
+        }
+
         Player player = event.getPlayer();
-        if (!isConfigItem(player.getInventory().getItemInMainHand()))
+        ItemStack handItem = player.getInventory().getItemInMainHand();
+        if (!isConfigItem(handItem))
             return;
 
         event.setUseItemInHand(Event.Result.DENY);
@@ -113,15 +212,26 @@ public final class ItemListDumpPlugin extends JavaPlugin implements Listener {
         if (Action.LEFT_CLICK_AIR.equals(event.getAction()) || Action.LEFT_CLICK_BLOCK.equals(event.getAction())) {
             onLeftClick(player);
         } else if (Action.RIGHT_CLICK_AIR.equals(event.getAction()) || Action.RIGHT_CLICK_BLOCK.equals(event.getAction())) {
-            // open writable book
-            event.setUseItemInHand(Event.Result.ALLOW);
-            event.setCancelled(false);
-            player.sendMessage("");
-            player.sendMessage(ChatColor.YELLOW + "フォーマット設定について");
-            player.sendMessage("");
-            player.sendMessage(ChatColor.WHITE + "・アイテムIDをフォーマットする文字列を本に入力してください");
-            player.sendMessage(ChatColor.WHITE + "・{material} が Material名 に、{item} で Minecraft ID に置換されます");
-            player.sendMessage("");
+            if (event.getClickedBlock() != null && event.getClickedBlock().getState() instanceof Container && !player.isSneaking()) {
+                // open container
+                event.setCancelled(false);
+                return;
+            } else if (Material.WRITABLE_BOOK.equals(handItem.getType())) {
+                // open writable book
+                player.sendMessage("");
+                player.sendMessage(ChatColor.YELLOW + "フォーマット設定について");
+                player.sendMessage("");
+                player.sendMessage(ChatColor.WHITE + "・アイテムIDをフォーマットする文字列を本に入力してください");
+                player.sendMessage(ChatColor.WHITE + "・{pid} が Material名 に、{mid} で Minecraft ID に置換されます");
+                player.sendMessage("");
+            }
+
+            if (handItem.getItemMeta() instanceof BookMeta) {
+                BookMeta bookMeta = (BookMeta) handItem.getItemMeta();
+                if (bookMeta.hasPages())
+                    makeListSelector(player).setLineFormatter(bookMeta.getPage(1));
+            }
+
         }
     }
 
@@ -132,18 +242,23 @@ public final class ItemListDumpPlugin extends JavaPlugin implements Listener {
             return;
 
         Player player = event.getPlayer();
-        ListSelector selector = getListSelector(player);
+        ListSelector selector = makeListSelector(player);
 
         selector.setLineFormatter(bookMeta.getPage(1));
         if (event.isSigning()) {
             selector.printList(player);
         } else {
             player.sendMessage("フォーマット設定を反映しました");
+            if (selector.getListedCount() > 0)
+                selector.printList(player);
         }
     }
 
     private void onLeftClick(Player player) {
-        getListSelector(player).openListEditor(player);
+        makeListSelector(player).openListEditor(player);
+        player.spigot().sendMessage(new ComponentBuilder("リストを書き出すには ").color(ChatColor.GOLD)
+                .append("/dumpitemlist dump").event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/dumpitemlist dump")).color(ChatColor.YELLOW)
+                .append(" を実行します", ComponentBuilder.FormatRetention.NONE).color(ChatColor.GOLD).create());
     }
 
 
@@ -178,12 +293,18 @@ public final class ItemListDumpPlugin extends JavaPlugin implements Listener {
 
     private final Map<UUID, ListSelector> listSelectors = Maps.newHashMap();
 
-    public ListSelector getListSelector(Player player) {
+    public ListSelector makeListSelector(Player player) {
         if (listSelectors.containsKey(player.getUniqueId()))
             return listSelectors.get(player.getUniqueId());
         ListSelector selector = new ListSelector();
         listSelectors.put(player.getUniqueId(), selector);
         return selector;
+    }
+
+    public @Nullable ListSelector getListSelector(Player player) {
+        if (listSelectors.containsKey(player.getUniqueId()))
+            return listSelectors.get(player.getUniqueId());
+        return null;
     }
 
 }

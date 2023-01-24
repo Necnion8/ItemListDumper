@@ -21,7 +21,10 @@ public class SimpleCommand implements TabExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length >= 1 && subCommands.containsKey(args[0].toLowerCase(Locale.ROOT))) {
+        if (args.length <= 0) {
+            if (subCommands.containsKey(null))
+                return subCommands.get(null).onCommand(sender, command, label, args);
+        } else if (subCommands.containsKey(args[0].toLowerCase(Locale.ROOT))) {
             return subCommands.get(args[0].toLowerCase(Locale.ROOT)).onCommand(sender, command, label, args);
         }
         return false;
