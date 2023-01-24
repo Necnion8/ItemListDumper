@@ -1,7 +1,7 @@
 name: ItemListDumper
 version: '${version}'
 main: com.gmail.necnionch.myplugin.itemlistdumper.bukkit.ItemListDumpPlugin
-api-version: 1.14
+api-version: 1.15
 authors: [ Necnion8 ]
 
 commands:
