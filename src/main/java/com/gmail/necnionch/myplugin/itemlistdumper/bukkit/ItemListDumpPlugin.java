@@ -64,7 +64,7 @@ public final class ItemListDumpPlugin extends JavaPlugin implements Listener {
                 .append("選択画面 ").color(ChatColor.YELLOW)
                 .append("|").color(ChatColor.WHITE)
                 .append(" シフト右クリ: ").color(ChatColor.GRAY)
-                .append("行フォーマット編集").color(ChatColor.YELLOW)
+                .append("フォーマット編集").color(ChatColor.YELLOW)
                 .create();
 
         getServer().getOnlinePlayers().forEach(p -> {
@@ -117,11 +117,10 @@ public final class ItemListDumpPlugin extends JavaPlugin implements Listener {
             event.setUseItemInHand(Event.Result.ALLOW);
             event.setCancelled(false);
             player.sendMessage("");
-            player.sendMessage(ChatColor.YELLOW + "行フォーマット設定について");
+            player.sendMessage(ChatColor.YELLOW + "フォーマット設定について");
             player.sendMessage("");
-            player.sendMessage(ChatColor.GRAY + "  ・アイテムとアイテムの間に挿入する文字列を入力します");
-            player.sendMessage(ChatColor.GRAY + "  ・ {id} がアイテムIDに置換されます");
-            player.sendMessage(ChatColor.GRAY + "  ・アイテム毎に改行する場合は、末尾に [ENTER] で改行文字を挿入してください");
+            player.sendMessage(ChatColor.WHITE + "・アイテムIDをフォーマットする文字列を本に入力してください");
+            player.sendMessage(ChatColor.WHITE + "・{material} が Material名 に、{item} で Minecraft ID に置換されます");
             player.sendMessage("");
         }
     }
@@ -139,7 +138,7 @@ public final class ItemListDumpPlugin extends JavaPlugin implements Listener {
         if (event.isSigning()) {
             selector.printList(player);
         } else {
-            player.sendMessage("行フォーマット設定を反映しました");
+            player.sendMessage("フォーマット設定を反映しました");
         }
     }
 
