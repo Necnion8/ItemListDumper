@@ -2,9 +2,7 @@ package com.gmail.necnionch.myplugin.itemlistdumper.bukkit;
 
 import com.gmail.necnionch.myplugin.itemlistdumper.bukkit.gui.Panel;
 import com.gmail.necnionch.myplugin.itemlistdumper.bukkit.gui.PanelItem;
-import com.google.common.collect.Comparators;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import net.wesjd.anvilgui.AnvilGUI;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
