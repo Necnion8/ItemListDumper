@@ -1,0 +1,14 @@
+name: ItemListDumper
+version: '${version}'
+main: com.gmail.necnionch.myplugin.itemlistdumper.bukkit.ItemListDumpPlugin
+api-version: 1.14
+authors: [ Necnion8 ]
+
+commands:
+  dumpitemlist:
+    permission: "itemlistdump.command.dumpitemlist"
+    usage: "/<command>  ---  アイテムを選び、アイテムIDをリストに書き出します"
+
+permissions:
+  itemlistdump.command.dumpitemlist:
+    default: op
